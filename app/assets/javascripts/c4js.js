@@ -424,7 +424,7 @@ $(document).ready(function() {
     resetGame();
     var newGameInstanceRequest = $.ajax({
       method: "POST",
-      url: "/games",
+      url: "/games/",
       dataType: "json",
       data: { game: { state: GAME_STATES.WAITING_FOR_OPPONENT, whose_turn: PLAYER_ONE, players_connected: 1 } }
     });
