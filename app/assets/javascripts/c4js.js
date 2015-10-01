@@ -23,14 +23,18 @@ var disksPerColumn = {
 };
 
 var requestInterval = 2500;
+var lastAddedDiskId;
+var currentPlayer;
+var buttonsDisabled = false;
 
-function Disk(row, column, player, x, y) {
+function Disk(row, column, player, x, y, id) {
   this.row = row;
   this.column = column;
   this.player = player;
   this.x = x;
   this.y = y;
   this.winningDisk = false;
+  this.id = id;
 }
 
 function addDisk(column) {
@@ -49,14 +53,38 @@ function addDisk(column) {
     return;
   }
 
-  var newDiskX = (radius * 2) * (column - 1);
+  disableAddDiskButtons();
 
-  disksPerColumn[column] += 1;
-  disks.push(new Disk(disksPerColumn[column], column, whoseTurn, newDiskX, 0));
+  var addDiskRequest = $.ajax({
+    url: '/games/' + currentGameInstance.id + '/add_disk_to_game',
+    method: 'POST',
+    dataType: 'json',
+    data: { disk: {
+      game_id: currentGameInstance.id,
+      row: disksPerColumn[column] + 1,
+      column: column,
+      player: currentPlayer,
+      winning_disk: false
+    } }
+  });
+  addDiskRequest.done(function(response) {
+    var newDiskX = (radius * 2) * (response.column - 1);
+    disksPerColumn[column] += 1;
+    var newDisk = new Disk(disksPerColumn[response.column], response.column, response.player, newDiskX, 0, response.id);
+    addDiskToStack(newDisk);
+    if (!gameFinished) {
+      nextPlayerTurn();
+    }
+  });
+  addDiskRequest.fail(function() {
+    enableAddDiskButtons();
+  });
+}
+
+function addDiskToStack(newDisk) {
+  disks.push(newDisk);
+  lastAddedDiskId = newDisk.id;
   checkWinConditions();
-  if (!gameFinished) {
-    nextPlayerTurn();
-  }
 }
 
 function debugAddDisk(column, player) {
@@ -100,11 +128,6 @@ function nextPlayerTurn() {
   });
   nextPlayerTurnRequest.done(function(response) {
     currentGameInstance = response;
-    if (currentGameInstance.whose_turn == "PLAYER_ONE_TURN") {
-      whoseTurn = PLAYER_ONE
-    } else {
-      whoseTurn = PLAYER_TWO
-    }
   });
 }
 
@@ -320,6 +343,21 @@ function resumeGame() {
   console.log('loop resumed!!');
 }
 
+function disableAddDiskButtons() {
+  $('.add-disk-button').each(function(index) {
+    this.disabled = true;
+  });
+  buttonsDisabled = true;
+}
+
+function enableAddDiskButtons() {
+  $('.add-disk-button').each(function(index) {
+    this.disabled = false;
+  });
+  buttonsDisabled = false;
+}
+
+
 $(document).ready(function() {
   var canvas = document.getElementById('game-area');
   var context = canvas.getContext('2d');
@@ -372,7 +410,7 @@ $(document).ready(function() {
   var update = function() {
     disks.forEach(updateDisk);
     displayGameId();
-    updateGameStatus();
+    checkWhoseTurn();
   }
 
   var draw = function() {
@@ -383,6 +421,7 @@ $(document).ready(function() {
 
   function startNewGame() {
     //request game instance
+    resetGame();
     var newGameInstanceRequest = $.ajax({
       method: "POST",
       url: "/games",
@@ -390,8 +429,8 @@ $(document).ready(function() {
       data: { game: { state: GAME_STATES.WAITING_FOR_OPPONENT, whose_turn: PLAYER_ONE, players_connected: 1 } }
     });
     newGameInstanceRequest.done(function(response) {
+      currentPlayer = PLAYER_ONE;
       startGameWithInstance(response);
-      console.log(response);
     });
   }
 
@@ -409,6 +448,7 @@ $(document).ready(function() {
     joinGameInstanceRequest.done(function(response) {
       console.log('join game request response');
       console.log(response);
+      currentPlayer = PLAYER_TWO;
       startGameWithInstance(response);
     });
   }
@@ -428,6 +468,7 @@ $(document).ready(function() {
     checkGameInstanceRequest.done(function(response) {
       console.log(response);
       currentGameInstance = response;
+      checkForNewDisk();
     });
     checkGameInstanceRequest.always(function() {
       setTimeout(checkGameInstance, requestInterval);
@@ -446,11 +487,40 @@ $(document).ready(function() {
     $('#your-game-id')[0].innerHTML = "Your game id: " + currentGameInstance.id;
   }
 
-  function updateGameStatus() {
-    if (whoseTurn == "PLAYER_ONE_TURN") {
+  function checkWhoseTurn() {
+    if (currentGameInstance.whose_turn == "PLAYER_ONE_TURN") {
+      whoseTurn = PLAYER_ONE
+    } else {
+      whoseTurn = PLAYER_TWO
+    }
+
+    if (whoseTurn === PLAYER_ONE) {
       $('#game-status')[0].innerHTML = "Player 1 Turn";
     } else {
       $('#game-status')[0].innerHTML = "Player 2 Turn";
+    }
+
+    if (whoseTurn != currentPlayer && !buttonsDisabled) {
+      disableAddDiskButtons();
+    } else if (whoseTurn === currentPlayer && buttonsDisabled) {
+      enableAddDiskButtons();
+    }
+  }
+
+  function checkForNewDisk() {
+    if (lastAddedDiskId != currentGameInstance.last_added_disk_id) {
+      var getLastAddedDiskRequest = $.ajax({
+        url: '/disks/' + currentGameInstance.last_added_disk_id,
+        method: 'GET',
+        dataType: 'json'
+      });
+      getLastAddedDiskRequest.done(function(response) {
+        var newDiskX = (radius * 2) * (response.column - 1);
+        disksPerColumn[response.column] += 1;
+        lastAddedDiskId = response.id;
+        newDisk = new Disk(response.row, response.column, response.player, newDiskX, 0, response.id);
+        addDiskToStack(newDisk);
+      });
     }
   }
 

@@ -39,9 +39,18 @@ class GamesController < ApplicationController
   end
 
   def add_disk_to_game
+    permitted_disk_params = disk_params
+    @disk = Disk.new(permitted_disk_params)
+
     respond_to do |format|
       if @game.present?
+        if @disk.save!
+          @game.update_attribute(:last_added_disk_id, @disk.id)
+          format.json { render json: @disk.to_json }
+        else
+        end
       else
+        #TODO
       end
     end
   end
@@ -111,5 +120,9 @@ class GamesController < ApplicationController
 
   def game_params
     params.require(:game).permit(:state, :whose_turn, :last_added_disk_id, :players_connected)
+  end
+
+  def disk_params
+    params.require(:disk).permit(:game_id, :row, :column, :player, :winning_disk)
   end
 end

@@ -3,11 +3,15 @@ Rails.application.routes.draw do
     member do
       put 'join_game'
       put 'next_player_turn'
+      post 'add_disk_to_game'
     end
     collection do
       get 'play_game'
     end
   end
+
+  get 'disks/:id/' => 'disks#show'
+
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 
