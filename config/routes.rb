@@ -12,6 +12,8 @@ Rails.application.routes.draw do
 
   get 'disks/:id/' => 'disks#show'
 
+  root to: 'application#redirect_to_game_page'
+
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 
