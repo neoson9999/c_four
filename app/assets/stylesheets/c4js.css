@@ -1,0 +1,12 @@
+#game-area {
+  margin-top: 20px;
+  background-color: lightgray;
+}
+
+.add-disk-button-1 {
+  margin-left: 15px;
+}
+
+.add-disk-button {
+  margin-left: 32px;
+}

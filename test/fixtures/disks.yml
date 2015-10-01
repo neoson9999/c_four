@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  game_id: 
+  row: 
+  column: 
+  player: 
+  winning_disk: false
+
+two:
+  game_id: 
+  row: 
+  column: 
+  player: 
+  winning_disk: false
